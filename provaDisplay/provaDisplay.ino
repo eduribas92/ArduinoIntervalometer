@@ -47,19 +47,21 @@ void setup() {
   Serial.begin(9600);
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
-  lcd.clear();
+  delay(10);
+  lcd.home();
+  lcd.cursor();
+  //lcd.clear();
   // Print a message to the LCD.
   lcd.print("hello, world!");
 }
 
 void loop() {
   // Turn off the display:
-  Serial.println("OFF");
-  lcd.noDisplay();
+  //Serial.println("OFF");
+  //lcd.noDisplay();
   delay(500);
   // Turn on the display:
   Serial.println("ON");
-  lcd.display();
+  //lcd.display();
   delay(500);
 }
-
