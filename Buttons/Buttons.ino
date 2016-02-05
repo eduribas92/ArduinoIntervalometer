@@ -75,8 +75,8 @@ void setup() {
 }
 
 void loop(){
+  
   // read the state of the pushbutton value:
-
   if( ( millis() - timeButtonPressed ) > precision ){
       timeButtonPressed = millis();
       stateButton1 = digitalRead(pinButton1);
