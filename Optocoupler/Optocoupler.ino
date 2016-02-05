@@ -4,11 +4,11 @@
 int l = 0;
 
 // connections:
-int optoFocus = 11;
-int optoShutter = 12;
+int optoFocus = 12;
+int optoShutter = 13;
 
 // shooting parameters:
-int totalPhotos = 1; // number of photos
+int totalPhotos = 5; // number of photos
 int counterPhotos = 0;
 long intervalTime = 5000; // (ms)
 long focusTime = 750; // (ms)
@@ -38,7 +38,13 @@ void setup() {
   while(startingDelay){
     Serial.println(startingDelay);
     startingDelay--;
-    delay(1000);
+    digitalWrite(optoFocus, HIGH);
+    digitalWrite(optoShutter, HIGH);
+    delay(500);
+    digitalWrite(optoFocus, LOW);
+    digitalWrite(optoShutter, LOW);
+    delay(500);
+    
   }
 
   char buffer [50];
