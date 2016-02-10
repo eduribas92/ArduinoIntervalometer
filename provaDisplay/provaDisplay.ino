@@ -46,7 +46,7 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 void setup() {
   Serial.begin(9600);
   // set up the LCD's number of columns and rows:
-  lcd.begin(16, 2);
+  lcd.begin(16, 4);
   delay(10);
   lcd.home();
   lcd.cursor();
@@ -57,11 +57,11 @@ void setup() {
 
 void loop() {
   // Turn off the display:
-  //Serial.println("OFF");
-  //lcd.noDisplay();
-  delay(500);
+  Serial.println("OFF");
+  lcd.noDisplay();
+  delay(2000);
   // Turn on the display:
   Serial.println("ON");
-  //lcd.display();
-  delay(500);
+  lcd.display();
+  delay(2000);
 }

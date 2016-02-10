@@ -48,20 +48,20 @@ int longitud = 0;
 
 void setup() {
   // set up the LCD's number of columns and rows:
-  lcd.begin(16, 2);
+  lcd.begin(20, 4);
   // Print a message to the LCD.
   lcd.print("hello, world!");
 }
 
 void loop() {
-  /*
+  
   // set the cursor to column 0, line 1
   // (note: line 1 is the second row, since counting begins with 0):
   lcd.setCursor(0, 1);
   // print the number of seconds since reset:
   segons = millis() / 1000;
   lcd.print(segons);
-  longitud = segons % 13;
+  longitud = segons % 17;
   if(longitud == 0){
     lcd.setCursor(3,1);
     lcd.print("*************");
@@ -70,11 +70,11 @@ void loop() {
       lcd.setCursor(i+3,1);
       lcd.print("*");
     }
-    for(int i=0; i<(13-longitud); i++){
+    for(int i=0; i<(17-longitud); i++){
       lcd.setCursor(i+3+longitud,1);
       lcd.print("_");
     }
   }
-  */
+  
 }
 
