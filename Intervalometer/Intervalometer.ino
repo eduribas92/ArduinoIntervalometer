@@ -12,6 +12,8 @@ Per cada nou menu, modificar:
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 int columns = 20;
 int rows = 4;
+const int pinBackLight = 11;
+int brightness = 0;
 
 //------------SERIAL--------------
 
@@ -40,16 +42,17 @@ const int precision = 150; // (ms)
 
 //------------MENU----------------
 
-int levelInc = 0, value = 0, level = 0, selectedOption = 0, numOptions = 5;
-int levelOption[] = {2,2,2,2,2}; // number of levels for each menu
+int levelInc = 0, value = 0, level = 0, selectedOption = 0, numOptions = 6;
+int levelOption[] = {2,2,2,2,2,2}; // number of levels for each menu
 
 //------------PARAMETERS----------
 
 // valueOption = [totalValueOption, valueOptionLevel1, valueOptionLevel2,...]
-int valueOption_NumPhotos[] = {0,0};
-long valueOption_IntTime[] = {0,0}; // (ms)
-long valueOption_Focus[] = {0,0}; // (ms)
-long valueOption_Expo[] = {0,0}; // (ms)
+int valueOption_NumPhotos[] = {5,5};
+long valueOption_IntTime[] = {3,3}; // (ms)
+long valueOption_Focus[] = {1,1}; // (ms)
+long valueOption_Expo[] = {2,2}; // (ms)
+int valueOption_backLight[] = {5,5};
 int FPS = 24;
 int valueOption_Shooting[] = {0,0};
 // FICAR-HO TOT EN UN VECTOR DE VECTORS? valueOption = [valueOption1, valueOption2, ...] 
@@ -73,6 +76,9 @@ void setup() {
 
   // set up the LCD's number of columns and rows:
   lcd.begin(columns, rows);
+  pinMode(pinBackLight, OUTPUT);
+  brightness = map(valueOption_backLight[0], 0, 10, 0, 255);
+  analogWrite(pinBackLight, brightness);
 
   // initialize Serial Monitor
   Serial.begin(9600);
@@ -146,7 +152,7 @@ void loop() {
     if( value != 0 ){
       
       if(level == 0){
-        selectedOption = ( selectedOption + numOptions + value ) % numOptions;
+        selectedOption = ( selectedOption + numOptions - value ) % numOptions;
         value = 0; 
         printMenuSerial(selectedOption);
         printMenuLCD(selectedOption);
@@ -183,7 +189,16 @@ void loop() {
             Serial.print("\t");
             Serial.println(valueOption_Expo[0]);
             break;
-          case 4: // 5. Start shooting:
+          case 4: // 5. Back. light
+            valueOption_backLight[level] = max( min( 10, valueOption_backLight[level] + value ), 0 );
+            value = 0;
+            valueOption_backLight[0] = valueOption_backLight[1];
+            brightness = map(valueOption_backLight[0], 0, 10, 0, 255);
+            analogWrite(pinBackLight, brightness);
+            Serial.print("\t");
+            Serial.println(valueOption_backLight[0]);
+            break;
+          case 5: // 6. Start shooting:
             valueOption_Shooting[level] = ( valueOption_Shooting[level] + 2 + value ) % 2;
             value = 0;
             valueOption_Shooting[0] = valueOption_Shooting[1];
@@ -201,12 +216,15 @@ void loop() {
 
   }
 
-  if( !shooting && valueOption_Shooting[0] != 0 ){
-    shooting == true;
+  if( !shooting && level == 0 && valueOption_Shooting[0] != 0 ){
+    lcd.clear();
+    shooting = true;
     valueOption_Shooting[0] = valueOption_Shooting[1] = 0;
     int counterDelay = startingDelay;
     while(counterDelay){
       Serial.println(counterDelay);
+      lcd.clear();
+      lcd.print(counterDelay);
       // PRINT ON SCREEN!
       counterDelay--;
       // turn on LED
@@ -224,25 +242,40 @@ void loop() {
 
     if(state == 0 && millis() > stateTime){ 
       // start focusing
-      stateTime = millis() + valueOption_Focus[0];
+      stateTime = millis() + valueOption_Focus[0]*1000;
       state = 1;
+      lcd.clear();
+      lcd.print("focusing...");
+      lcd.print(counterPhotos);
+      lcd.print("/");
+      lcd.print(valueOption_NumPhotos[0]);
       digitalWrite(optoFocus, HIGH);
       Serial.println("focusing...");
     }
 
     if(state == 1 && millis() > stateTime){ 
       // start shooting
-      stateTime = millis() + valueOption_Expo[0];
+      stateTime = millis() + valueOption_Expo[0]*1000;
       state = 2;
+      lcd.clear();
+      lcd.print("shooting...");
+      lcd.print(counterPhotos);
+      lcd.print("/");
+      lcd.print(valueOption_NumPhotos[0]);
       digitalWrite(optoShutter, HIGH);
       Serial.println("shooting...");
     }
 
     if(state == 2 && millis() > stateTime){
       // stops focusing and shooting, starts waiting
-      stateTime = millis() + valueOption_IntTime[0];
-      state = 0;
       counterPhotos++;
+      state = 0;
+      stateTime = millis() + valueOption_IntTime[0]*1000;
+      lcd.clear();
+      lcd.print("waiting...");
+      lcd.print(counterPhotos);
+      lcd.print("/");
+      lcd.print(valueOption_NumPhotos[0]);
       digitalWrite(optoFocus, LOW);
       digitalWrite(optoShutter, LOW);
       
@@ -253,7 +286,14 @@ void loop() {
       
       if(counterPhotos == valueOption_NumPhotos[0]){
         shooting = false;
+        counterPhotos = 0;
         Serial.print("END\n");
+        lcd.clear();
+        lcd.print("END");
+        lcd.setCursor(0,1);
+        lcd.print(counterPhotos);
+        lcd.print("/");
+        lcd.print(valueOption_NumPhotos[0]);
         // AFEGIR MISSATGE DE FINISHED SUCCESFULLY! I QUE CALGUI APRETAR UN BOTO PER SALTAR
       }
     }
@@ -282,7 +322,10 @@ void printMenuSerial(int selectedOption){
       Serial.print("4. Exposure adjust: ");
       break;
     case 4:
-      Serial.print("5. Start shooting: ");
+      Serial.print("5. Background light: ");
+      break;
+    case 5:
+      Serial.print("6. Start shooting: ");
       break;
     default: 
       Serial.println("Undefined menu!");
@@ -291,6 +334,7 @@ void printMenuSerial(int selectedOption){
   //Serial.println(value);
   return;
 }
+
 
 void MenuLCD(int selectedOption){
   switch(selectedOption) {
@@ -311,7 +355,11 @@ void MenuLCD(int selectedOption){
       lcd.print(valueOption_Expo[0]);
       break;
     case 4:
-      Serial.print("5. Start shooting: ");
+      lcd.print("5.Back. light: ");
+      lcd.print(valueOption_backLight[0]);
+      break;
+    case 5:
+      lcd.print("6.Start shooting: ");
       lcd.print(valueOption_Shooting[0]);
       break;
     default: 
