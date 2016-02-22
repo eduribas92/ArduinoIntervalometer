@@ -10,65 +10,49 @@ Per cada nou menu, modificar:
 
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
-int columns = 20;
-int rows = 4;
-const int pinBackLight = 11;
-int brightness = 0;
-
-//------------SERIAL--------------
-
-// printing string of characters and values
-#include <stdio.h>
-int l = 0;
+const int pinBackLight = 10;
+int columns = 20, rows = 4;
 
 //------------BUTTONS-------------
 
-const int pinButton1 = 8, pinButton2 = 9, pinButton3 = 10;
-int stateButton1 = 0, stateButton2 = 0, stateButton3 = 0;
-
-/*
-int previousStateButton1 = 1;         
-int previousStateButton2 = 1; 
-int previousStateButton3 = 1;
-
-int possibleStateButton1 = 0;         
-int possibleStateButton2 = 0; 
-int possibleStateButton3 = 0;
-*/
+const int pinButtonInc = 12, pinButtonDec = 13, pinButtonIntro = 11;
+int stateButtonInc = 0, stateButtonDec = 0, stateButtonIntro = 0;
 
 boolean buttonPressed = false;
 unsigned long timeButtonPressed = 0;
-const int precision = 150; // (ms)
+const int precision = 200; // (ms)
 
 //------------MENU----------------
 
-int levelInc = 0, value = 0, level = 0, selectedOption = 0, numOptions = 6;
-int levelOption[] = {2,2,2,2,2,2}; // number of levels for each menu
+int levelInc = 0, value = 0, level = 0, selectedOption = 0, numOptions = 7;
+int levelOption[] = {2,2,2,2,1,2,2}; // number of levels for each menu
 
 //------------PARAMETERS----------
 
 // valueOption = [totalValueOption, valueOptionLevel1, valueOptionLevel2,...]
-int valueOption_NumPhotos[] = {5,5};
-long valueOption_IntTime[] = {3,3}; // (ms)
+int valueOption_NumPhotos[] = {3,3};
+long valueOption_IntTime[] = {1,1}; // (ms)
 long valueOption_Focus[] = {1,1}; // (ms)
-long valueOption_Expo[] = {2,2}; // (ms)
-int valueOption_backLight[] = {5,5};
+long valueOption_Expo[] = {1,1}; // (ms)
+int valueOption_BackLight[] = {5,5};
 int FPS = 24;
+int valueOption_Duration = valueOption_NumPhotos[0]*(valueOption_IntTime[0] + valueOption_Focus[0] + valueOption_Expo[0]) - valueOption_IntTime[0];
 int valueOption_Shooting[] = {0,0};
 // FICAR-HO TOT EN UN VECTOR DE VECTORS? valueOption = [valueOption1, valueOption2, ...] 
 // --> SWITCH MOLT FACIL, NOMES CAL SUMAR VALUE AMB COORDENADES valueOption[selectedOption][levelOption]
 
-//------------SOOTING-------------
+//------------SHOOTING------------
 
-int optoFocus = 12, optoShutter = 13;
+int optoFocus = 8, optoShutter = 9;
 int shootingMenu = 0;
 bool shooting = false;
 int startingDelay = 5; // (s)
 int counterPhotos = 0;
-int state = 0;// 0: waiting, 1: focusing, 2: shooting
-unsigned long stateTime = 1000; // en quin moment ho assignare?? 
+int previousState = -1, state = 0;// 0: waiting, 1: focusing, 2: shooting, 4: finished
+unsigned long stateTime; // en quin moment ho assignare?? 
 // si faig un time-lapse amb un gran interval time, trigara molt a començar!
 // fer stateTime = 10s? o startingDelay x2, o simliar, o directament = 0 i amb el startingDelay ja ho controlo
+unsigned long timeInitial, timePrintInfo;
 
 //--------------------------------
 
@@ -77,24 +61,15 @@ void setup() {
   // set up the LCD's number of columns and rows:
   lcd.begin(columns, rows);
   pinMode(pinBackLight, OUTPUT);
-  brightness = map(valueOption_backLight[0], 0, 10, 0, 255);
-  analogWrite(pinBackLight, brightness);
-
-  // initialize Serial Monitor
-  Serial.begin(9600);
-  Serial.println("\ninitializing...");
-  printMenuSerial(selectedOption);
+  analogWrite(pinBackLight, map(valueOption_BackLight[0], 0, 10, 0, 255) );
   printMenuLCD(selectedOption);
-  //printMenu(selectedOption,value[selectedOption]);
-  
-  // initialize the LED pin as an output:
-  //pinMode(pinLed, OUTPUT);      
+     
   // initialize the pushbutton pin as an input:
-  pinMode(pinButton1, INPUT);
-  pinMode(pinButton2, INPUT);
-  pinMode(pinButton3, INPUT); 
+  pinMode(pinButtonInc, INPUT);
+  pinMode(pinButtonDec, INPUT);
+  pinMode(pinButtonIntro, INPUT); 
 
-  // initialize digital pins 12 and 13 as outputs
+  // initialize output digital pins
   pinMode(optoFocus, OUTPUT);
   pinMode(optoShutter, OUTPUT);
   digitalWrite(optoFocus, LOW);
@@ -107,37 +82,22 @@ void loop() {
   // read the state of the pushbutton value if has passed enough time:
   if( ( millis() - timeButtonPressed ) > precision ){
     timeButtonPressed = millis();
-    stateButton1 = digitalRead(pinButton1);
-    stateButton2 = digitalRead(pinButton2);
-    stateButton3 = digitalRead(pinButton3);
+    stateButtonInc = digitalRead(pinButtonInc);
+    stateButtonDec = digitalRead(pinButtonDec);
+    stateButtonIntro = digitalRead(pinButtonIntro);
 
     // check if the pushbutton is pressed.
     // if it is, the buttonState is HIGH:
-    if( buttonPressed == false && stateButton1 == HIGH ) {      
-      //digitalWrite(pinLed, HIGH);
-      value = 1;
-      buttonPressed == true;  // QUÈ PASSA SI HO ESCRIC CORRECTAMENT???? DEIXARA D'AUMENTAR EL VALOR GRADUALMENT??? 
-    } 
-    // PUC DEIXAR-HO DE LA FORMA SEGÜENT?
-    // if( buttonPressed == false && stateButton1 == HIGH ) val = 1;
+    if( stateButtonInc == HIGH ) value = 1;
 
-    if( buttonPressed == false && stateButton2 == HIGH ) {     
-      //digitalWrite(pinLed, HIGH);
-      value = -1;
-      buttonPressed == true;  
+    if( stateButtonDec == HIGH ) value = -1;
+
+    if( buttonPressed == false && stateButtonIntro == HIGH ){
+      levelInc = 1;
+      buttonPressed = true; 
     } 
 
-    if( buttonPressed == false && stateButton3 == HIGH ) {      
-      //digitalWrite(pinLed, HIGH);
-      levelInc = +1;
-      buttonPressed == true; 
-    } 
-
-    // --> pregunta: ENTRA A AQUEST IF???
-    if( stateButton1 == LOW && stateButton2 == LOW && stateButton3 == LOW ){
-      //digitalWrite(pinLed, LOW);
-      buttonPressed = false;
-    }
+    if( stateButtonIntro == LOW ) buttonPressed = false;
   }
 
   if( !shooting ){ // if not shooting
@@ -147,16 +107,17 @@ void loop() {
     if( levelInc != 0 ){
       level = (level + levelInc) % levelOption[selectedOption];
       levelInc = 0;
+      lcd.setCursor(0,0);
+      if(level == 0) lcd.print("*");
+      else lcd.print(" ");
     }
   
     if( value != 0 ){
       
       if(level == 0){
-        selectedOption = ( selectedOption + numOptions - value ) % numOptions;
+        selectedOption = ( selectedOption + numOptions + value ) % numOptions;
         value = 0; 
-        printMenuSerial(selectedOption);
         printMenuLCD(selectedOption);
-        //printMenu(selectedOption,value[selectedOption]);
         
       }else{
         // segons menu i level, canvia els paràmetres adequats
@@ -165,48 +126,39 @@ void loop() {
             valueOption_NumPhotos[level] += value;
             value = 0;
             valueOption_NumPhotos[0] = valueOption_NumPhotos[1];
-            Serial.print("\t");
-            Serial.println(valueOption_NumPhotos[0]);
+            valueOption_Duration = valueOption_NumPhotos[0]*(valueOption_IntTime[0] + valueOption_Focus[0] + valueOption_Expo[0]) - valueOption_IntTime[0];
             break;
           case 1: // 2. Interval time:
             valueOption_IntTime[level] += value;
             value = 0;
             valueOption_IntTime[0] = valueOption_IntTime[1];
-            Serial.print("\t");
-            Serial.println(valueOption_IntTime[0]);
+            valueOption_Duration = valueOption_NumPhotos[0]*(valueOption_IntTime[0] + valueOption_Focus[0] + valueOption_Expo[0]) - valueOption_IntTime[0];
             break;
           case 2: // 3. Focus adjust:
             valueOption_Focus[level] += value;
             value = 0;
             valueOption_Focus[0] = valueOption_Focus[1];
-            Serial.print("\t");
-            Serial.println(valueOption_NumPhotos[0]);
+            valueOption_Duration = valueOption_NumPhotos[0]*(valueOption_IntTime[0] + valueOption_Focus[0] + valueOption_Expo[0]) - valueOption_IntTime[0];
             break;
           case 3: // 4. Exposure adjust:
             valueOption_Expo[level] += value;
             value = 0;
             valueOption_Expo[0] = valueOption_Expo[1];
-            Serial.print("\t");
-            Serial.println(valueOption_Expo[0]);
+            valueOption_Duration = valueOption_NumPhotos[0]*(valueOption_IntTime[0] + valueOption_Focus[0] + valueOption_Expo[0]) - valueOption_IntTime[0];
             break;
-          case 4: // 5. Back. light
-            valueOption_backLight[level] = max( min( 10, valueOption_backLight[level] + value ), 0 );
+          case 5: // 6. Back. light
+            valueOption_BackLight[1] = max( min( 10, valueOption_BackLight[1] + value ), 0 );
             value = 0;
-            valueOption_backLight[0] = valueOption_backLight[1];
-            brightness = map(valueOption_backLight[0], 0, 10, 0, 255);
-            analogWrite(pinBackLight, brightness);
-            Serial.print("\t");
-            Serial.println(valueOption_backLight[0]);
+            valueOption_BackLight[0] = valueOption_BackLight[1];
+            analogWrite(pinBackLight, map(valueOption_BackLight[0], 0, 10, 0, 255) );
             break;
-          case 5: // 6. Start shooting:
+          case 6: // 7. Start shooting:
             valueOption_Shooting[level] = ( valueOption_Shooting[level] + 2 + value ) % 2;
             value = 0;
             valueOption_Shooting[0] = valueOption_Shooting[1];
-            Serial.print("\t");
-            Serial.println(valueOption_Shooting[0]);
+            // PERMETRE AJUSTAR AQUEST DELAY!!
             break;
           default: 
-            Serial.println("Undefined menu!");
             break;
         }
         printMenuLCD(selectedOption);
@@ -219,10 +171,12 @@ void loop() {
   if( !shooting && level == 0 && valueOption_Shooting[0] != 0 ){
     lcd.clear();
     shooting = true;
+    state = 0;
+    stateTime = 0;
+    previousState = -1;
     valueOption_Shooting[0] = valueOption_Shooting[1] = 0;
     int counterDelay = startingDelay;
     while(counterDelay){
-      Serial.println(counterDelay);
       lcd.clear();
       lcd.print(counterDelay);
       // PRINT ON SCREEN!
@@ -232,10 +186,8 @@ void loop() {
       // turn off LED
       delay(500);
     }
-    char buffer [50];
-    l=sprintf(buffer, "N: %d\n\n", counterPhotos);
-    for(int i= 0; i<l; i++) 
-    Serial.print(buffer[i]);
+    timePrintInfo = 0;
+    timeInitial = millis();
   }
 
   if( shooting ){
@@ -245,12 +197,12 @@ void loop() {
       stateTime = millis() + valueOption_Focus[0]*1000;
       state = 1;
       lcd.clear();
-      lcd.print("focusing...");
       lcd.print(counterPhotos);
       lcd.print("/");
       lcd.print(valueOption_NumPhotos[0]);
+      lcd.print(" focusing...");
       digitalWrite(optoFocus, HIGH);
-      Serial.println("focusing...");
+    
     }
 
     if(state == 1 && millis() > stateTime){ 
@@ -258,109 +210,123 @@ void loop() {
       stateTime = millis() + valueOption_Expo[0]*1000;
       state = 2;
       lcd.clear();
-      lcd.print("shooting...");
       lcd.print(counterPhotos);
       lcd.print("/");
       lcd.print(valueOption_NumPhotos[0]);
+      lcd.print(" shooting...");
       digitalWrite(optoShutter, HIGH);
-      Serial.println("shooting...");
+ 
     }
 
     if(state == 2 && millis() > stateTime){
       // stops focusing and shooting, starts waiting
+      digitalWrite(optoFocus, LOW);
+      digitalWrite(optoShutter, LOW);
       counterPhotos++;
-      state = 0;
-      stateTime = millis() + valueOption_IntTime[0]*1000;
       lcd.clear();
-      lcd.print("waiting...");
       lcd.print(counterPhotos);
       lcd.print("/");
       lcd.print(valueOption_NumPhotos[0]);
-      digitalWrite(optoFocus, LOW);
-      digitalWrite(optoShutter, LOW);
       
-      char buffer [50];
-      l=sprintf(buffer, "N: %d\n\n", counterPhotos);
-      for(int i= 0; i<l; i++) 
-        Serial.print(buffer[i]);
+      if(counterPhotos != valueOption_NumPhotos[0]){
+        state = 0;
+        stateTime = millis() + valueOption_IntTime[0]*1000;
+        lcd.print(" waiting...");
+      }
       
       if(counterPhotos == valueOption_NumPhotos[0]){
-        shooting = false;
+        state = 4;
+        lcd.setCursor(0,2);
+        lcd.print("Shooting completed!");
+        lcd.setCursor(0,3);
+        lcd.print("(Press any button)");
         counterPhotos = 0;
-        Serial.print("END\n");
-        lcd.clear();
-        lcd.print("END");
-        lcd.setCursor(0,1);
-        lcd.print(counterPhotos);
-        lcd.print("/");
-        lcd.print(valueOption_NumPhotos[0]);
-        // AFEGIR MISSATGE DE FINISHED SUCCESFULLY! I QUE CALGUI APRETAR UN BOTO PER SALTAR
+        valueOption_BackLight[0] = valueOption_BackLight[1] = 5;
+        analogWrite(pinBackLight, map(valueOption_BackLight[0], 0, 10, 0, 255) );   
       }
     }
 
-    // BOTTONS UP I DOWN CONTROLEN LLUM DE BACKGROUND, MANTENIR ENTER PREMUT (3 segons)
-    // PERMET ACCEDIR A MENU: PAUSE/INIT, RESTART, RETURN
+    
+    if(state != 4){
+      // PRINT DYNAMIC INFO
+      if( (millis() - timePrintInfo ) > 1000 ){
+        timePrintInfo = millis();
+        lcd.setCursor(0,1);
+        lcd.print("Remaining: ");
+        lcd.print( max(0, valueOption_Duration - (timePrintInfo - timeInitial)/1000 ) );
+      }
+      // PRINT STATIC INFO
+      if( state != previousState ){
+        previousState = state;
+        lcd.setCursor(0,3);
+        lcd.print("Light: ");
+        lcd.print(valueOption_BackLight[0]);
+      }
+    }
+    
+    if(state == 4){
+      if(value != 0 || levelInc != 0){
+        state = 0;
+        value = levelInc = 0;
+        shooting = false;
+        level = 0;
+        selectedOption = 0,
+        printMenuLCD(selectedOption);
+      }
+    }
+
+    
+    
+    if(value != 0){
+      valueOption_BackLight[1] = max( min( 10, valueOption_BackLight[1] + value ), 0 );
+      value = 0;
+      valueOption_BackLight[0] = valueOption_BackLight[1];
+      analogWrite(pinBackLight, map(valueOption_BackLight[0], 0, 10, 0, 255) );
+      lcd.setCursor(0,3);
+      lcd.print("Light: ");
+      lcd.print(valueOption_BackLight[0]);
+    }
+
+    // BOTTONS UP I DOWN CONTROLEN LLUM DE BACKGROUND
+    // MANTENIR ENTER PREMUT (3 segons) PERMET ACCEDIR A MENU: PAUSE/INIT, RESTART, RETURN
     // QUE DEMANI PER CONFIRMAR
+
+    // AFEGIR MÉS INFO A LA PANTALLA
     
   }
-}
-
-void printMenuSerial(int selectedOption){
-//void printMenu( int selectedOption, int value ){
-  Serial.print("\n");
-  switch(selectedOption) {
-    case 0:
-      Serial.print("1. Number of photos: ");
-      break;              
-    case 1:
-      Serial.print("2. Interval time: ");
-      break;              
-    case 2:
-      Serial.print("3. Focus adjust: ");
-      break;              
-    case 3:
-      Serial.print("4. Exposure adjust: ");
-      break;
-    case 4:
-      Serial.print("5. Background light: ");
-      break;
-    case 5:
-      Serial.print("6. Start shooting: ");
-      break;
-    default: 
-      Serial.println("Undefined menu!");
-      break;
-  }
-  //Serial.println(value);
-  return;
 }
 
 
 void MenuLCD(int selectedOption){
   switch(selectedOption) {
     case 0:
-      lcd.print("1.Num. photos: ");
+      lcd.print("1 Photos: ");
       lcd.print(valueOption_NumPhotos[0]);
       break;              
     case 1:
-      lcd.print("2.Int. time: ");
+      lcd.print("2 Interval: ");
       lcd.print(valueOption_IntTime[0]);
       break;              
     case 2:
-      lcd.print("3.Focus adjust: ");
+      lcd.print("3 Focus: ");
       lcd.print(valueOption_Focus[0]);
       break;              
     case 3:
-      lcd.print("4.Expo. adjust: ");
+      lcd.print("4 Exposure: ");
       lcd.print(valueOption_Expo[0]);
       break;
     case 4:
-      lcd.print("5.Back. light: ");
-      lcd.print(valueOption_backLight[0]);
+      lcd.print("5 Duration: ");
+      lcd.print(valueOption_Duration);
       break;
     case 5:
-      lcd.print("6.Start shooting: ");
-      lcd.print(valueOption_Shooting[0]);
+      lcd.print("6 Light: ");
+      lcd.print(valueOption_BackLight[0]);
+      break;
+    case 6:
+      lcd.print("* START: ");
+      if(valueOption_Shooting[0] == 0) lcd.print("No");
+      if(valueOption_Shooting[0] == 1) lcd.print("Yes");
       break;
     default: 
       lcd.print("Undefined menu!");
@@ -369,10 +335,12 @@ void MenuLCD(int selectedOption){
   return;
 }
 
+
 void printMenuLCD(int selectedOption){
   boolean line = true;
   lcd.clear();
-  lcd.print("*");
+  if(level == 0) lcd.print("*");
+  else lcd.print(" ");
   MenuLCD(selectedOption);
   for(int i = 1; i < 4; i++){
     if(selectedOption == numOptions-1 && line){
