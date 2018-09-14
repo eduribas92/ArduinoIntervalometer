@@ -27,7 +27,7 @@ int levelInc = 0, value = 0, level = 0, selectedOption = 0, numOptions = 8;
 int levelOption[][8] = {                          // 1rst pos: number of levels      rest: position of each level
                         {5,9,10,11,12},        // NumPhotos
                         {8,7,8,10,11,13,14,15}, // IntTime
-                        {5,8,10,11,12},           // Focus
+                        {4,8,10,11},           // Focus
                         {8,7,8,10,11,13,14,15}, // Expo
                         {1},                      // Duration
                         {2,8},                    // BackLight
@@ -41,8 +41,8 @@ long valueOption_NumPhotos[] = {0,0,0,0,0}; // 0000 - 9999
 long valueOption_NumPhotos_Limits[] = {0,10,10,10,10};
 long valueOption_IntTime[] = {0,0,0,0,0,0,0,0}; // (ms) ..m..,...s
 long valueOption_IntTime_Limits[] = {0,10,10,6,10,10,10,10};
-long valueOption_Focus[] = {0,0,0,0,0}; // (ms) .,...s
-long valueOption_Focus_Limits[] = {0,10,10,10,10};
+long valueOption_Focus[] = {0,0,0,0}; // (ms) .,...s
+long valueOption_Focus_Limits[] = {0,10,10,10};
 long valueOption_Expo[] = {0,0,0,0,0,0,0,0}; // (ms) ..m..,...s
 long valueOption_Expo_Limits[] = {0,10,10,6,10,10,10,10};
 int FPS = 24;
@@ -138,7 +138,7 @@ void loop() {
           case 2: // 3. Focus adjust:
             valueOption_Focus[level] = ( valueOption_Focus[level] + value + valueOption_Focus_Limits[level] ) % valueOption_Focus_Limits[level] ;
             value = 0;
-            valueOption_Focus[0] = valueOption_Focus[1]*1000 + valueOption_Focus[2]*100 + valueOption_Focus[3]*10 + valueOption_Focus[4];
+            valueOption_Focus[0] = valueOption_Focus[1]*1000 + valueOption_Focus[2]*100 + valueOption_Focus[3]*10;
             break;
           
           case 3: // 4. Exposure adjust:
@@ -257,6 +257,8 @@ void loop() {
       if( (millis() - timePrintInfo ) > 1000 ){
         timePrintInfo = millis();
         lcd.setCursor(0,1);
+        lcd.print("                    ");
+        lcd.setCursor(0,1);
         lcd.print("Remaining: ");
         lcd.print( max(0, valueOption_Duration - (timePrintInfo - timeInitial)/1000 ) );
         lcd.print("s");
@@ -330,7 +332,6 @@ void MenuLCD(int selectedOption){
       lcd.print(",");
       lcd.print(valueOption_Focus[2]);
       lcd.print(valueOption_Focus[3]);
-      lcd.print(valueOption_Focus[4]);
       lcd.print("s");
       break;              
     case 3:
